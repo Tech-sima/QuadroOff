@@ -18,10 +18,40 @@ class TelegramBotHandler {
             // Обработка ошибок бота
             this.bot.on('error', (error) => {
                 console.error('❌ Ошибка Telegram бота:', error.message);
+                console.error('Детали ошибки:', error);
             });
             
             this.bot.on('polling_error', (error) => {
                 console.error('❌ Ошибка polling Telegram бота:', error.message);
+                console.error('Код ошибки:', error.code);
+                // Не останавливаем приложение при ошибке polling
+                if (error.code === 'ETELEGRAM' || error.code === 'EFATAL') {
+                    console.error('⚠️  Критическая ошибка polling. Попытка переподключения через 5 секунд...');
+                    setTimeout(() => {
+                        console.log('🔄 Перезапуск polling...');
+                        this.bot.startPolling().catch(err => {
+                            console.error('❌ Не удалось перезапустить polling:', err.message);
+                        });
+                    }, 5000);
+                }
+            });
+            
+            // Подтверждение успешного запуска polling
+            this.bot.on('message', (msg) => {
+                // Это событие сработает только если polling работает
+                if (!this.pollingStarted) {
+                    this.pollingStarted = true;
+                    console.log('✅ Telegram бот успешно запущен и готов к работе!');
+                }
+            });
+            
+            // Логирование успешного подключения
+            this.bot.getMe().then((botInfo) => {
+                console.log(`✅ Telegram бот подключен: @${botInfo.username} (${botInfo.first_name})`);
+                console.log(`📱 Bot ID: ${botInfo.id}`);
+            }).catch((error) => {
+                console.error('❌ Не удалось получить информацию о боте:', error.message);
+                console.error('Проверьте правильность TELEGRAM_BOT_TOKEN');
             });
             
             this.setupHandlers();

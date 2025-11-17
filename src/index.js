@@ -30,9 +30,24 @@ class Application {
             this.adminPanel.start(port);
 
             console.log('🚀 Приложение запущено успешно!');
-            console.log(`📱 Telegram бот активен`);
-            console.log(`🌐 Админ панель: http://localhost:${port}`);
+            console.log(`📱 Telegram бот инициализирован (проверка подключения...)`);
+            console.log(`🌐 Админ панель: http://0.0.0.0:${port}`);
             console.log(`📊 База данных: ${process.env.DATABASE_PATH || './database.sqlite'}`);
+            console.log(`🔑 TELEGRAM_BOT_TOKEN установлен: ${process.env.TELEGRAM_BOT_TOKEN ? '✅ Да' : '❌ Нет'}`);
+            
+            // Проверяем что бот действительно работает
+            setTimeout(async () => {
+                try {
+                    const botInfo = await this.bot.bot.getMe();
+                    console.log(`✅ Бот подтвержден: @${botInfo.username}`);
+                } catch (error) {
+                    console.error('❌ Проблема с ботом:', error.message);
+                    console.error('Проверьте:');
+                    console.error('1. Правильность TELEGRAM_BOT_TOKEN');
+                    console.error('2. Доступность Telegram API с сервера');
+                    console.error('3. Логи на наличие ошибок polling');
+                }
+            }, 3000);
 
         } catch (error) {
             console.error('❌ Ошибка при запуске приложения:', error);
