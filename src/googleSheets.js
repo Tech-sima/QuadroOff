@@ -114,10 +114,13 @@ class GoogleSheets {
         
         if (!this.initialized || !this.sheets) {
             console.warn('⚠️  Google Sheets не инициализирован. Пропускаем запись в таблицу.');
+            console.warn('💡 Проверьте настройки GOOGLE_CREDENTIALS или GOOGLE_CREDENTIALS_PATH');
             return;
         }
 
         try {
+            console.log(`🔄 Добавление заявки #${applicationId} в Google Sheets...`);
+            
             // Получаем текущие данные для определения следующей строки
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadsheetId,
@@ -125,26 +128,30 @@ class GoogleSheets {
             });
 
             const rows = response.data.values || [];
-            const nextRow = rows.length + 1;
+            // Пропускаем заголовок, если он есть
+            const nextRow = rows.length > 0 ? rows.length + 1 : 1;
+            console.log(`📝 Следующая строка для записи: ${nextRow}`);
 
             // Подготавливаем данные строки
             const rowData = [
-                applicationId || '',
-                applicationData.telegram_id || '',
-                applicationData.username || '',
-                applicationData.first_name || '',
-                applicationData.last_name || '',
-                applicationData.phone_number || '',
-                applicationData.age || '',
-                applicationData.occupation || '',
-                applicationData.interest_topic || '',
-                applicationData.source || '',
-                applicationData.language || 'ru',
+                String(applicationId || ''),
+                String(applicationData.telegram_id || ''),
+                String(applicationData.username || ''),
+                String(applicationData.first_name || ''),
+                String(applicationData.last_name || ''),
+                String(applicationData.phone_number || ''),
+                String(applicationData.age || ''),
+                String(applicationData.occupation || ''),
+                String(applicationData.interest_topic || ''),
+                String(applicationData.source || ''),
+                String(applicationData.language || 'ru'),
                 applicationData.subscribed_to_channel ? 'Да' : 'Нет',
                 applicationData.rules_agreed ? 'Да' : 'Нет',
-                applicationData.status || 'pending',
+                String(applicationData.status || 'pending'),
                 new Date().toLocaleString('ru-RU'),
             ];
+
+            console.log(`📋 Данные для записи:`, rowData);
 
             // Записываем данные в таблицу
             await this.sheets.spreadsheets.values.append({
@@ -162,6 +169,7 @@ class GoogleSheets {
             if (error.response && error.response.data) {
                 console.error('Детали ошибки:', JSON.stringify(error.response.data, null, 2));
             }
+            console.error('Stack trace:', error.stack);
             // Не прерываем выполнение, если ошибка с Google Sheets
         }
     }
@@ -173,10 +181,13 @@ class GoogleSheets {
         }
         
         if (!this.initialized || !this.sheets) {
+            console.warn('⚠️  Google Sheets не инициализирован. Пропускаем обновление статуса.');
             return;
         }
 
         try {
+            console.log(`🔄 Поиск заявки #${applicationId} в Google Sheets для обновления статуса на "${status}"...`);
+            
             // Получаем все данные
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadsheetId,
@@ -184,11 +195,17 @@ class GoogleSheets {
             });
 
             const rows = response.data.values || [];
+            console.log(`📊 Найдено строк в таблице: ${rows.length}`);
             
             // Ищем строку с нужным ID заявки (в колонке A)
-            for (let i = 0; i < rows.length; i++) {
-                if (rows[i][0] == applicationId) {
+            // Пропускаем заголовок (строка 0)
+            let found = false;
+            for (let i = 1; i < rows.length; i++) {
+                const rowId = rows[i][0];
+                // Преобразуем в строку для сравнения (ID может быть числом или строкой)
+                if (String(rowId) === String(applicationId)) {
                     const rowIndex = i + 1; // Google Sheets использует 1-based индексацию
+                    console.log(`✅ Найдена заявка #${applicationId} в строке ${rowIndex}`);
                     
                     // Обновляем статус (колонка N, индекс 13)
                     await this.sheets.spreadsheets.values.update({
@@ -200,15 +217,21 @@ class GoogleSheets {
                         },
                     });
 
-                    console.log(`✅ Статус заявки #${applicationId} обновлен в Google Sheets`);
+                    console.log(`✅ Статус заявки #${applicationId} обновлен в Google Sheets (строка ${rowIndex}, статус: ${status})`);
+                    found = true;
                     break;
                 }
+            }
+            
+            if (!found) {
+                console.warn(`⚠️  Заявка #${applicationId} не найдена в Google Sheets. Возможно, она была создана до настройки синхронизации.`);
             }
         } catch (error) {
             console.error('❌ Ошибка при обновлении статуса в Google Sheets:', error.message);
             if (error.response && error.response.data) {
                 console.error('Детали ошибки:', JSON.stringify(error.response.data, null, 2));
             }
+            console.error('Stack trace:', error.stack);
         }
     }
 

@@ -965,10 +965,12 @@ class TelegramBotHandler {
         try {
             // Сохраняем заявку в базу данных
             const applicationId = await this.db.addApplication(applicationData);
+            console.log(`💾 Заявка #${applicationId} сохранена в базу данных`);
             
             // Добавляем заявку в Google Sheets (не блокируем основное выполнение)
             this.googleSheets.addApplication(applicationData, applicationId).catch(err => {
-                console.error('Ошибка при записи в Google Sheets (не критично):', err.message);
+                console.error('❌ Ошибка при записи в Google Sheets (не критично):', err.message);
+                console.error('Детали:', err);
             });
             
             // Отправляем подтверждение пользователю
@@ -1052,10 +1054,12 @@ class TelegramBotHandler {
 
             // Обновляем статус
             await this.db.updateApplicationStatus(applicationId, action);
+            console.log(`💾 Статус заявки #${applicationId} обновлен в базе данных: ${action}`);
 
             // Обновляем статус в Google Sheets
             this.googleSheets.updateApplicationStatus(applicationId, action).catch(err => {
-                console.error('Ошибка при обновлении статуса в Google Sheets (не критично):', err.message);
+                console.error('❌ Ошибка при обновлении статуса в Google Sheets (не критично):', err.message);
+                console.error('Детали:', err);
             });
 
             // Отправляем уведомление пользователю
